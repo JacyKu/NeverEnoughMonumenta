@@ -1,0 +1,47 @@
+{
+	"schemaVersion": 1,
+	"id": "neverenoughmonumenta",
+	"version": "${version}",
+	"name": "NeverEnoughMonumenta",
+	"description": "Injects Monumenta API items into JEI, EMI, and REI as synthetic client-side item stacks.",
+	"authors": [
+		"jcyyy_"
+	],
+	"contact": {
+		"homepage": "https://api.playmonumenta.com/items"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/neverenoughmonumenta/icon.png",
+	"environment": "client",
+	"mixins": [
+		"neverenoughmonumenta.client.mixins.json"
+	],
+	"entrypoints": {
+		"main": [
+			"jem.NeverEnoughMonumenta"
+		],
+		"client": [
+			"jem.client.NeverEnoughMonumentaClient"
+		],
+		"jei_mod_plugin": [
+			"jem.client.integration.jei.NeverEnoughMonumentaJeiPlugin"
+		],
+		"emi": [
+			"jem.client.integration.emi.NeverEnoughMonumentaEmiPlugin"
+		],
+		"rei_client": [
+			"jem.client.integration.rei.NeverEnoughMonumentaReiPlugin"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.18.6",
+		"minecraft": "~1.20.4",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"emi": "*",
+		"jei": "*",
+		"roughlyenoughitems": "*"
+	}
+}
