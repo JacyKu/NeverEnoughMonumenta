@@ -30,4 +30,8 @@ public record MonumentaCatalog(List<MonumentaCatalogEntry> entries, Set<Item> ba
 	public List<ItemStack> copyStacks() {
 		return entries.stream().map(MonumentaCatalogEntry::copyCurrentStack).toList();
 	}
+
+	public List<ItemStack> copyBaseItemStacks() {
+		return baseItems.stream().map(ItemStack::new).toList();
+	}
 }

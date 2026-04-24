@@ -1,6 +1,8 @@
 package jem.client.integration.rei;
 
 import jem.NeverEnoughMonumenta;
+import jem.client.MonumentaItemVisibility;
+import jem.client.config.NeverEnoughMonumentaConfigManager;
 import jem.client.monumenta.MonumentaCatalogEntry;
 import jem.client.monumenta.MonumentaMasterworkHoverState;
 import jem.client.monumenta.MonumentaItemRepository;
@@ -27,6 +29,8 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
 
@@ -35,6 +39,8 @@ public class NeverEnoughMonumentaReiPlugin implements REIClientPlugin {
 		new ResourceLocation(NeverEnoughMonumenta.MOD_ID, "rei_masterwork")
 	);
 	private static final MasterworkEntryDefinition MASTERWORK_ENTRY_DEFINITION = new MasterworkEntryDefinition();
+	private static final List<EntryStack<?>> removedVanillaEntries = new ArrayList<>();
+	private static boolean customEntriesVisible;
 
 	@Override
 	public void registerEntryTypes(EntryTypeRegistry registry) {
@@ -43,13 +49,13 @@ public class NeverEnoughMonumentaReiPlugin implements REIClientPlugin {
 
 	@Override
 	public void registerEntries(EntryRegistry registry) {
-		registry.addEntries(
-			MonumentaItemRepository.getCatalog()
-				.entries()
-				.stream()
-				.map(NeverEnoughMonumentaReiPlugin::toEntryStack)
-				.toList()
-		);
+		registry.addEntries(customEntries());
+		customEntriesVisible = !MonumentaItemRepository.getCatalog().entries().isEmpty();
+		refresh(registry);
+	}
+
+	public static void refreshRuntime() {
+		refresh(EntryRegistry.getInstance());
 	}
 
 	public static MonumentaCatalogEntry getHoveredMasterworkEntry(Screen screen, double mouseX, double mouseY) {
@@ -73,6 +79,68 @@ public class NeverEnoughMonumentaReiPlugin implements REIClientPlugin {
 			return EntryStacks.of(entry.copyRepresentativeStack());
 		}
 		return EntryStack.of(MASTERWORK_ENTRY_TYPE, entry);
+	}
+
+	private static void refresh(EntryRegistry registry) {
+		if (registry == null) {
+			return;
+		}
+
+		if (NeverEnoughMonumentaConfigManager.hideCustomMonumentaEntries()) {
+			if (customEntriesVisible) {
+				registry.removeEntryIf(NeverEnoughMonumentaReiPlugin::isCustomEntry);
+				customEntriesVisible = false;
+			}
+		} else if (!customEntriesVisible) {
+			List<EntryStack<?>> entries = customEntries();
+			if (!entries.isEmpty()) {
+				registry.addEntries(entries);
+				customEntriesVisible = true;
+			}
+		}
+
+		if (NeverEnoughMonumentaConfigManager.hideVanillaItemStacks()) {
+			if (removedVanillaEntries.isEmpty()) {
+				List<EntryStack<?>> entries = matchingEntries(registry, NeverEnoughMonumentaReiPlugin::isVanillaBaseEntry);
+				if (!entries.isEmpty()) {
+					removedVanillaEntries.addAll(entries);
+					registry.removeEntryIf(NeverEnoughMonumentaReiPlugin::isVanillaBaseEntry);
+				}
+			}
+		} else if (!removedVanillaEntries.isEmpty()) {
+			registry.addEntries(removedVanillaEntries.stream().map(EntryStack::copy).toList());
+			removedVanillaEntries.clear();
+		}
+
+		registry.refilter();
+	}
+
+	private static List<EntryStack<?>> customEntries() {
+		return MonumentaItemRepository.getCatalog().entries().stream().map(NeverEnoughMonumentaReiPlugin::toEntryStack).toList();
+	}
+
+	private static List<EntryStack<?>> matchingEntries(EntryRegistry registry, java.util.function.Predicate<EntryStack<?>> predicate) {
+		List<EntryStack<?>> entries = new ArrayList<>();
+		registry.getEntryStacks()
+			.filter(predicate)
+			.forEach(entry -> entries.add(entry.copy()));
+		return entries;
+	}
+
+	private static boolean isCustomEntry(EntryStack<?> entry) {
+		Object value = entry.getValue();
+		if (value instanceof MonumentaCatalogEntry monumentaEntry) {
+			return MonumentaItemVisibility.shouldHideEntry(monumentaEntry);
+		}
+		return value instanceof ItemStack itemStack && MonumentaItemVisibility.isMonumentaStack(itemStack);
+	}
+
+	private static boolean isVanillaBaseEntry(EntryStack<?> entry) {
+		Object value = entry.getValue();
+		if (value instanceof ItemStack itemStack) {
+			return MonumentaItemVisibility.isVanillaMinecraftStack(itemStack);
+		}
+		return "minecraft".equals(entry.getContainingNamespace()) && !isCustomEntry(entry);
 	}
 
 	private static final class MasterworkEntryDefinition implements EntryDefinition<MonumentaCatalogEntry> {

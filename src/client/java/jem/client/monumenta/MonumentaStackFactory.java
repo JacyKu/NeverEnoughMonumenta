@@ -1,6 +1,17 @@
 package jem.client.monumenta;
 
+import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
 import jem.NeverEnoughMonumenta;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,16 +28,6 @@ import net.minecraft.world.item.DyeableLeatherItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-
-import java.nio.charset.StandardCharsets;
-import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
 
 public final class MonumentaStackFactory {
 	private static final String INTERNAL_TAG = NeverEnoughMonumenta.MOD_ID;
@@ -53,6 +54,7 @@ public final class MonumentaStackFactory {
 		Item item = resolveBaseItem(definition.baseItemName());
 		ItemStack exactStack = createExactStack(definition, item);
 		if (exactStack != null) {
+			writeInternalIdentity(exactStack, definition);
 			return exactStack;
 		}
 
@@ -723,18 +725,28 @@ public final class MonumentaStackFactory {
 	}
 
 	private static Item resolveBaseItem(String baseItemName) {
-		ResourceLocation itemId = resolveBaseItemId(baseItemName);
-		if (itemId != null) {
-			Item resolved = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
-			if (resolved != null && resolved != Items.AIR) {
-				return resolved;
-			}
+		Item resolved = resolveBaseItemLookup(baseItemName);
+		if (resolved != null) {
+			return resolved;
 		}
 
-		if (!baseItemName.isBlank()) {
+		if (baseItemName != null && !baseItemName.isBlank()) {
 			NeverEnoughMonumenta.LOGGER.warn("Unable to resolve Monumenta base item '{}', falling back to paper", baseItemName);
 		}
 		return Items.PAPER;
+	}
+
+	private static Item resolveBaseItemLookup(String baseItemName) {
+		String normalizedBaseItemName = normalizeBaseItemName(baseItemName == null ? "" : baseItemName);
+		ResourceLocation candidateItemId = resolveBaseItemId(baseItemName);
+		if (candidateItemId != null) {
+			Item directMatch = BuiltInRegistries.ITEM.get(candidateItemId);
+			if (directMatch != Items.AIR) {
+				return directMatch;
+			}
+		}
+
+		return findRegistryLookupMatch(candidateItemId, normalizedBaseItemName);
 	}
 
 	private static ResourceLocation resolveBaseItemId(String baseItemName) {
@@ -742,18 +754,52 @@ public final class MonumentaStackFactory {
 			return null;
 		}
 
-		ResourceLocation direct = ResourceLocation.tryParse(baseItemName);
+		String trimmed = baseItemName.trim();
+		ResourceLocation direct = ResourceLocation.tryParse(trimmed);
 		if (direct != null) {
 			return direct;
 		}
 
-		String normalized = normalizeBaseItemName(baseItemName);
+		int namespaceSeparator = trimmed.indexOf(':');
+		if (namespaceSeparator >= 0 && namespaceSeparator < trimmed.length() - 1) {
+			String namespace = normalizeBaseItemName(trimmed.substring(0, namespaceSeparator));
+			String path = normalizeBaseItemName(trimmed.substring(namespaceSeparator + 1));
+			if (!namespace.isBlank() && !path.isBlank()) {
+				return new ResourceLocation(namespace, SPECIAL_CASE_PATHS.getOrDefault(path, path));
+			}
+		}
+
+		String normalized = normalizeBaseItemName(trimmed);
 		String specialPath = SPECIAL_CASE_PATHS.get(normalized);
 		if (specialPath != null) {
 			return new ResourceLocation("minecraft", specialPath);
 		}
 
 		return normalized.isBlank() ? null : new ResourceLocation("minecraft", normalized);
+	}
+
+	private static Item findRegistryLookupMatch(ResourceLocation candidateItemId, String normalizedBaseItemName) {
+		for (Item item : BuiltInRegistries.ITEM) {
+			if (item == Items.AIR) {
+				continue;
+			}
+
+			ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(item);
+			if (itemId == null) {
+				continue;
+			}
+
+			if (candidateItemId != null
+				&& itemId.getNamespace().equalsIgnoreCase(candidateItemId.getNamespace())
+				&& itemId.getPath().equalsIgnoreCase(candidateItemId.getPath())) {
+				return item;
+			}
+
+			if (!normalizedBaseItemName.isBlank() && normalizeBaseItemName(itemId.getPath()).equals(normalizedBaseItemName)) {
+				return item;
+			}
+		}
+		return null;
 	}
 
 	private static String normalizeBaseItemName(String value) {
@@ -851,4 +897,5 @@ public final class MonumentaStackFactory {
 
 	private record LoreLine(Component component, String plainText) {
 	}
+
 }

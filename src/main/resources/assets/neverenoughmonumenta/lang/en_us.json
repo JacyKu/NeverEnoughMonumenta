@@ -1,0 +1,9 @@
+{
+	"category.neverenoughmonumenta": "Never Enough Monumenta",
+	"key.neverenoughmonumenta.toggle_hide_vanilla_item_stacks": "Toggle Vanilla Items",
+	"key.neverenoughmonumenta.toggle_hide_custom_monumenta_entries": "Toggle Monumenta Items",
+	"neverenoughmonumenta.message.hide_vanilla_item_stacks.enabled": "Vanilla items are now hidden in item viewers.",
+	"neverenoughmonumenta.message.hide_vanilla_item_stacks.disabled": "Vanilla items are now visible in item viewers.",
+	"neverenoughmonumenta.message.hide_custom_monumenta_entries.enabled": "Monumenta entries are now hidden in item viewers.",
+	"neverenoughmonumenta.message.hide_custom_monumenta_entries.disabled": "Monumenta entries are now visible in item viewers."
+}

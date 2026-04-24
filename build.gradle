@@ -13,6 +13,12 @@ repositories {
 			includeGroup 'maven.modrinth'
 		}
 	}
+		maven {
+			url = 'https://maven.nucleoid.xyz'
+			content {
+				includeGroup 'eu.pb4'
+			}
+		}
 	maven {
 		url = 'https://maven.blamejared.com'
 	}
@@ -53,9 +59,16 @@ dependencies {
 	modCompileOnly "dev.emi:emi-fabric:${project.emi_version}:api"
 	modLocalRuntime "dev.emi:emi-fabric:${project.emi_version}"
 
+	modImplementation(include("me.sargunvohra.mcmods:autoconfig1u:${project.autoconfig_version}")) {
+		transitive = false
+	}
+	implementation include("com.moandjiezana.toml:toml4j:${project.toml4j_version}")
+
 	modLocalRuntime "maven.modrinth:entitytexturefeatures:${project.etf_version}"
 	modLocalRuntime "maven.modrinth:entity-model-features:${project.emf_version}"
 	modLocalRuntime "maven.modrinth:cit-resewn:${project.cit_resewn_version}"
+	modLocalRuntime "maven.modrinth:cit-resewn-defaults:${project.cit_resewn_version}"
+	modLocalRuntime "com.terraformersmc:modmenu:9.2.0"
 }
 
 processResources {
